@@ -46,19 +46,9 @@ bool HitSphere(Point3 center, double radius, Ray ray)
 {
 	Vec3 oc = ray.mOrigin - center;
 	double a = DotProduct(ray.mDirection, ray.mDirection);
-
 	double b = 2.0 * DotProduct(oc, ray.mDirection);
-
 	double c = DotProduct(oc, oc) - (radius*radius);
 	double discriminant = (b*b) - (4*a*c);
-
-	// printf("oc=");
-	// oc.printSelf();
-	// printf("ray.mDirection=");
-	// ray.mDirection.printSelf();
-	// printf("dotProduct=%.2f\n", DotProduct(oc, ray.mDirection));
-	
-	// printf("a=%.2f, b=%.2f, c=%.2f, discriminant=%.2f", a, b, c, discriminant);
 	
 	return (discriminant > 0);
 }
