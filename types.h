@@ -80,6 +80,17 @@ inline Vec3 operator-(Vec3 v1, Vec3 v2) {
 	return v1;
 }
 
+inline Vec3 UnitVector(Vec3 v)
+{
+	v *= (1 / v.length());
+	return v;
+}
+
+inline double DotProduct(Vec3 v1, Vec3 v2)
+{
+	return (v1.mX * v2.mX) + (v1.mY * v2.mY) + (v1.mZ * v2.mZ);
+}
+
 typedef Vec3 Colour;
 typedef Vec3 Point3;
 

@@ -40,12 +40,49 @@ void MakeDemoPPMFile()
 	}
 }
 
+// does the ray 'ray' intersect with a sphere center 'center', radius 'radius'
+// this is some magic maths for now - don't fully understand how this works
+bool HitSphere(Point3 center, double radius, Ray ray)
+{
+	Vec3 oc = ray.mOrigin - center;
+	double a = DotProduct(ray.mDirection, ray.mDirection);
+
+	double b = 2.0 * DotProduct(oc, ray.mDirection);
+
+	double c = DotProduct(oc, oc) - (radius*radius);
+	double discriminant = (b*b) - (4*a*c);
+
+	// printf("oc=");
+	// oc.printSelf();
+	// printf("ray.mDirection=");
+	// ray.mDirection.printSelf();
+	// printf("dotProduct=%.2f\n", DotProduct(oc, ray.mDirection));
+	
+	// printf("a=%.2f, b=%.2f, c=%.2f, discriminant=%.2f", a, b, c, discriminant);
+	
+	return (discriminant > 0);
+}
+
+Colour PixelColour(Ray r)
+{
+	if(HitSphere(Point3(0, 0, -1), 0.5, r))
+	{
+		return Colour(1.0, 0, 0);
+	}
+	
+	Vec3 unitDirection = UnitVector(r.mDirection);
+	double t = 0.5*(unitDirection.mY + 1.0);
+
+	// lerp between white and blue as the normalised y coordinate changes
+	return ((1.0-t) * Colour(1.0, 1.0, 1.0)) + (t * Colour(0.5, 0.7, 1.0));
+}
+
 void RayTracer()
 {
-	const double aspectRatio = 16/9;
+	const double aspectRatio = 16.0 / 9.0;
 
 	const int imageWidth = 400;
-	const int imageHeight = imageWidth / aspectRatio;
+	const int imageHeight = (int)(imageWidth / aspectRatio);
 
 	// not sure on why we picked 2.0 for this - this doesn't appear to be measured in pixels.
 	const double viewportHeight = 2.0;
@@ -72,12 +109,15 @@ void RayTracer()
 	{
 		for(int x = 0; x < imageWidth; x++)
 		{
-			double xProportion = (double)x / (imageWidth-1);
-			double yProportion = (double)y / (imageHeight-1);
-
-			// TODO tomorrow implement rayColour();
+			double xProportion = 1 - ((double)x / (imageWidth-1));
+			double yProportion = 1 - ((double)y / (imageHeight-1));
 			
-			//WriteColour(Colour(1.0, 0, 0));
+			// starts at the eye, goes to the current pixel we're trying to draw
+			Ray eyeToPixelRay(origin, (bottomLeftCorner + (viewportXVec*xProportion) + (viewportYVec*yProportion)) - origin);
+			
+			Colour pixelColour = PixelColour(eyeToPixelRay);
+			
+			WriteColour(pixelColour);
 		}
 	}
 }
