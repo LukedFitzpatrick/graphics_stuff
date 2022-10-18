@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <optional>
 #include "../types.h"
 
 const int MAX_COLOUR = 255;
@@ -40,31 +41,95 @@ void MakeDemoPPMFile()
 	}
 }
 
-// does the ray 'ray' intersect with a sphere center 'center', radius 'radius'
-// this is some magic maths for now - don't fully understand how this works
-bool HitSphere(Point3 center, double radius, Ray ray)
+struct HitRecord
 {
-	Vec3 oc = ray.mOrigin - center;
-	double a = DotProduct(ray.mDirection, ray.mDirection);
-	double b = 2.0 * DotProduct(oc, ray.mDirection);
-	double c = DotProduct(oc, oc) - (radius*radius);
-	double discriminant = (b*b) - (4*a*c);
+	Point3 mPointOfIntersection;
+	Vec3 mNormal;
+	double mRayT;
+};
+
+// TODO exercise: come back and write this with no virtual function calls
+class IHittable
+{
+public:
+	virtual ~IHittable() = default;
+	virtual std::optional<HitRecord> Hit(const Ray& ray, double tMin, double tMax) = 0;
+};
+
+class Sphere : public IHittable
+{
+public:
+	Sphere(Point3 center, double radius)
+		: mCenter(center)
+		, mRadius(radius)
+	{
+	}
 	
-	return (discriminant > 0);
-}
+	Point3 mCenter;
+	double mRadius;
+	
+	std::optional<HitRecord> Hit(const Ray& ray, double tMin, double tMax) override
+	{
+		// magic maths for the intersection of a Ray and a Sphere
+		Vec3 oc = ray.mOrigin - mCenter;
+
+		
+		double a = ray.mDirection.LengthSquared();
+		double halfB = DotProduct(oc, ray.mDirection);
+		double c = oc.LengthSquared() - (mRadius*mRadius);
+
+		double discriminant = (halfB*halfB) - (a*c);
+
+		if(discriminant < 0)
+		{
+			// negative sqrt indicates no intersection
+			return std::nullopt;
+		}
+
+		double sqrtd = sqrt(discriminant);
+		double root = (-halfB - sqrtd) / a;
+		if(root < tMin || root > tMax)
+		{
+			// try the other intersection point
+			root = (-halfB + sqrtd) / a;
+			if(root < tMin || root > tMax)
+			{
+				return std::nullopt;
+			}
+		}
+
+		HitRecord hr;
+		hr.mRayT = root;		
+		hr.mPointOfIntersection = ray.AtParam(hr.mRayT);
+		hr.mNormal = UnitVector(hr.mPointOfIntersection - mCenter);
+		return hr;
+	}
+};
 
 Colour PixelColour(Ray r)
 {
-	if(HitSphere(Point3(0, 0, -1), 0.5, r))
-	{
-		return Colour(1.0, 0, 0);
-	}
+	Sphere sph(Point3(0, 0, -1), 0.5);
+	auto hitRecord = sph.Hit(r, -999, 999);
 	
-	Vec3 unitDirection = UnitVector(r.mDirection);
-	double t = 0.5*(unitDirection.mY + 1.0);
+	if(hitRecord.has_value())
+	{
+		// work out the normal to the point of intersection
+		// Point3 pointOfIntersection = r.AtParam(*hitParam);
+		// Vec3 normal = UnitVector(pointOfIntersection - sphereCenter);
 
-	// lerp between white and blue as the normalised y coordinate changes
-	return ((1.0-t) * Colour(1.0, 1.0, 1.0)) + (t * Colour(0.5, 0.7, 1.0));
+		// all of the components of normal are between -1.0 and
+		// 1.0. If we add 1.0 it is between 0 and 2.0. Then multiply
+		// by 0.5 to get it between 0 and 1.0 (the range of a colour).
+		return 0.5 * Colour(hitRecord->mNormal.mX + 1.0, hitRecord->mNormal.mY + 1.0, hitRecord->mNormal.mZ + 1.0);
+	}
+	else
+	{
+		Vec3 unitDirection = UnitVector(r.mDirection);
+		double t = 0.5*(unitDirection.mY + 1.0);
+
+		// lerp between white and blue as the normalised y coordinate changes
+		return ((1.0-t) * Colour(1.0, 1.0, 1.0)) + (t * Colour(0.5, 0.7, 1.0));
+	}
 }
 
 void RayTracer()
@@ -94,13 +159,16 @@ void RayTracer()
 	//Point3 bottomLeftCornerCheck = origin - (viewportXVec * 0.5) - (viewportYVec * 0.5) - Vec3(0, 0, focalLength);
 	
 	WritePPMHeader(imageWidth, imageHeight);
-	
-	for(int y = 0; y < imageHeight; y++)
+
+	// no idea why they did the loops like this (starting at max value
+	// for y, but starting at min value for x). Just following
+	// convention so that the images appear around the right way.
+	for(int y = imageHeight-1; y >= 0; y--)
 	{
 		for(int x = 0; x < imageWidth; x++)
 		{
-			double xProportion = 1 - ((double)x / (imageWidth-1));
-			double yProportion = 1 - ((double)y / (imageHeight-1));
+			double xProportion = ((double)x / (imageWidth-1));
+			double yProportion = ((double)y / (imageHeight-1));
 			
 			// starts at the eye, goes to the current pixel we're trying to draw
 			Ray eyeToPixelRay(origin, (bottomLeftCorner + (viewportXVec*xProportion) + (viewportYVec*yProportion)) - origin);

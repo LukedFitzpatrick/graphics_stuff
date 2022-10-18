@@ -45,17 +45,17 @@ struct Vec3
 		return *this;
 	}
 
-	double lengthSquared()
+	double LengthSquared() const
 	{
 		return (mX*mX) + (mY*mY) + (mZ*mZ);
 	}
 
-	double length()
+	double Length() const
 	{
-		return sqrt(lengthSquared());
+		return sqrt(LengthSquared());
 	}
 
-	void printSelf()
+	void PrintSelf()
 	{
 		printf("[%.2f %.2f %.2f]\n", mX, mY, mZ);
 	}
@@ -82,7 +82,7 @@ inline Vec3 operator-(Vec3 v1, Vec3 v2) {
 
 inline Vec3 UnitVector(Vec3 v)
 {
-	v *= (1 / v.length());
+	v *= (1 / v.Length());
 	return v;
 }
 
@@ -109,7 +109,7 @@ struct Ray
 	// t is a sliding parameter along the ray - positive numbers
 	// result in something in the direction of the ray, negative is
 	// behind it.
-	Point3 at(double t)
+	Point3 AtParam(double t) const
 	{
 		return mOrigin + (t*mDirection);
 	}
