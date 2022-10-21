@@ -24,11 +24,14 @@ void WritePPMHeader(int width, int height)
 	printf("%d\n", MAX_COLOUR); // max value for each colour
 }
 
-void WriteColour(Colour c)
+// colour represents the sum of 'samplesPerPixel' samples, we divide
+// in this function. I wouldn't personally implement it like this,
+// maybe it's best practice.
+void WriteColour(Colour c, int samplesPerPixel)
 {
-	int rOut = MAX_COLOUR * c.mX;
-	int gOut = MAX_COLOUR * c.mY;
-	int bOut = MAX_COLOUR * c.mZ;
+	int rOut = (MAX_COLOUR * c.mX) / samplesPerPixel;
+	int gOut = (MAX_COLOUR * c.mY) / samplesPerPixel;
+	int bOut = (MAX_COLOUR * c.mZ) / samplesPerPixel;
 	printf("%d %d %d\n", rOut, gOut, bOut);
 }
 
@@ -48,7 +51,7 @@ void MakeDemoPPMFile()
 			double g = double(height-y) / (height-1);
 			double b = 0.25;
 
-			WriteColour(Colour(r, g, b));
+			WriteColour(Colour(r, g, b), 1);
 		}
 	}
 }
@@ -242,6 +245,8 @@ void RayTracer()
 	const int imageWidth = 400;
 	const int imageHeight = (int)(imageWidth / aspectRatio);
 
+	const int samplesPerPixel = 100;
+	
 	WritePPMHeader(imageWidth, imageHeight);
 
 	// no idea why they did the loops like this (starting at max value
@@ -251,14 +256,20 @@ void RayTracer()
 	{
 		for(int x = 0; x < imageWidth; x++)
 		{
-			double xProportion = ((double)x / (imageWidth-1));
-			double yProportion = ((double)y / (imageHeight-1));
+			Colour pixelColour(0, 0, 0);
+
+			// take average of multiple samples to achieve anti aliasing
+			for(int sample = 0; sample < samplesPerPixel; sample++)
+			{
+				double xProportion = (((double)x + RandomDouble(0, 1)) / (imageWidth-1));
+				double yProportion = (((double)y + RandomDouble(0, 1)) / (imageHeight-1));
 			
-			// starts at the eye, goes to the current pixel we're trying to draw
-			Ray eyeToPixelRay = camera.GetEyeToPixelRay(xProportion, yProportion);
-			Colour pixelColour = PixelColour(eyeToPixelRay, world);
-			
-			WriteColour(pixelColour);
+				// starts at the eye, goes to the current pixel we're trying to draw
+				Ray eyeToPixelRay = camera.GetEyeToPixelRay(xProportion, yProportion);
+				pixelColour += PixelColour(eyeToPixelRay, world);
+			}
+
+			WriteColour(pixelColour, samplesPerPixel);
 		}
 	}
 }
